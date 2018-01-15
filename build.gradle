@@ -1,0 +1,96 @@
+buildscript {
+    ext {
+        springBootVersion = '1.5.9.RELEASE'
+		jacksonDatatypeVersion = '2.9.3'
+		lombokVersion = '1.11'
+		springCloudeHystrixVersion = '1.3.6.RELEASE'
+		apacheHttpClientVersion = '4.5.4'
+		swaggerVersion = '2.6.1'
+		jbossLoggingVersion = '3.3.1.Final'
+		jbossLoggingAnnotationsVersion = '2.1.0.Final'
+    }
+    repositories {
+        mavenCentral()
+		maven {
+			url "https://plugins.gradle.org/m2/"
+		}
+    }
+    dependencies {
+        classpath("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
+        classpath("io.franzbecker:gradle-lombok:${lombokVersion}")
+    }
+}
+
+apply plugin: 'java'
+apply plugin: 'idea'
+apply plugin: 'org.springframework.boot'
+apply plugin: 'io.franzbecker.gradle-lombok'
+
+group 'com.creditcuisse'
+
+jar {
+    baseName = 'trade-validator'
+    version =  '0.0.1'
+}
+
+repositories {
+    mavenCentral()
+}
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+configurations {
+	provided {
+		description = 'Non-exported compile-time dependencies.'
+	}
+	jbossLoggingTool {
+		description = 'Dependencies for running the jboss-logging tooling.'
+	}
+}
+
+sourceSets {
+	main {
+		compileClasspath += configurations.provided
+		compileClasspath += configurations.jbossLoggingTool
+	}
+	integrationTest {
+		java {
+			compileClasspath += main.output
+			compileClasspath += main.compileClasspath
+			compileClasspath += test.output
+			compileClasspath += test.compileClasspath
+			runtimeClasspath += test.runtimeClasspath
+		}
+	}
+}
+
+task integrationTest(type: Test) {
+	testClassesDirs = sourceSets.integrationTest.output.classesDirs
+	classpath = sourceSets.integrationTest.runtimeClasspath
+}
+
+// Automatically execute integration tests during build process.
+check.dependsOn integrationTest
+// Run integration tests after unit tests.
+integrationTest.mustRunAfter test
+
+dependencies {
+    compile("org.springframework.boot:spring-boot-starter-web")
+    compile("org.springframework.boot:spring-boot-actuator")
+    compile("org.springframework.boot:spring-boot-starter-cache")
+    compile("net.sf.ehcache:ehcache")
+    compile("org.springframework.cloud:spring-cloud-starter-hystrix:${springCloudeHystrixVersion}")
+    compile("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:${jacksonDatatypeVersion}") // For ZonedDateTime serialization.
+    compile("org.apache.httpcomponents:httpclient:${apacheHttpClientVersion}")
+    compile("io.springfox:springfox-swagger2:${swaggerVersion}")
+    compile("io.springfox:springfox-swagger-ui:${swaggerVersion}")
+
+    // Logging.
+    compile("org.jboss.logging:jboss-logging:${jbossLoggingVersion}")
+    provided("org.jboss.logging:jboss-logging-annotations:${jbossLoggingAnnotationsVersion}")
+    jbossLoggingTool("org.jboss.logging:jboss-logging-processor:${jbossLoggingAnnotationsVersion}")
+
+    // Testing.
+    testCompile('org.springframework.boot:spring-boot-starter-test')
+}
